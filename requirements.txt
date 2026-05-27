@@ -1,0 +1,17 @@
+langchain
+langchain-core
+langchain-community
+pypdf
+pymupdf
+faiss-cpu # vector store
+sentence-transformers # embedding model
+numpy 
+chromadb
+langchain-groq 
+langgraph
+langchain-google-genai
+ipykernel
+deepagents
+python-dotenv
+langchain-anthropic
+langchain_openai

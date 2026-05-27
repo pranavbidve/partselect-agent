@@ -1,0 +1,73 @@
+MOCK_CUSTOMERS = {
+    "CUST-001": {
+        "name": "John Smith",
+        "account_tier": "standard",
+        "order_history": [
+            {"order_id": "ORD-4821", "part": "PS11752778", "part_name": "Ice Maker Assembly", "date": "2024-11-10", "status": "delivered"},
+            {"order_id": "ORD-4103", "part": "PS11731365", "part_name": "Water Inlet Valve", "date": "2024-08-22", "status": "delivered"},
+            {"order_id": "ORD-5102", "part": "PS11755497", "part_name": "Water Filter", "date": "2025-01-15", "status": "delivered"},
+        ],
+        "open_tickets": ["Dishwasher drain issue — awaiting part delivery"],
+        "email": "john.smith@example.com",
+    },
+    "CUST-002": {
+        "name": "Maria Garcia",
+        "account_tier": "premium",
+        "order_history": [
+            {"order_id": "ORD-5501", "part": "PS11745889", "part_name": "Dishwasher Pump and Motor Assembly", "date": "2025-02-03", "status": "delivered"},
+            {"order_id": "ORD-5489", "part": "PS11756892", "part_name": "Water Inlet Valve (dishwasher)", "date": "2025-01-28", "status": "delivered"},
+        ],
+        "open_tickets": [],
+        "email": "maria.garcia@example.com",
+    },
+    "CUST-003": {
+        "name": "Bob Johnson",
+        "account_tier": "standard",
+        "order_history": [
+            {"order_id": "ORD-4677", "part": "PS11749893", "part_name": "Evaporator Fan Motor", "date": "2024-09-14", "status": "delivered"},
+        ],
+        "open_tickets": ["Refrigerator not cooling — technician scheduled"],
+        "email": "bob.johnson@example.com",
+    },
+}
+
+MOCK_INVENTORY = {
+    # Low stock items (stock_level < 5) 
+    "PS11752778": {"stock_level": 3, "warehouse": "Detroit-MI", "restock_eta": "2025-06-05"},
+    "PS11770539": {"stock_level": 2, "warehouse": "Chicago-IL", "restock_eta": "2025-06-10"},
+    "PS11746337": {"stock_level": 4, "warehouse": "Atlanta-GA", "restock_eta": "2025-06-08"},
+    "PS11757023": {"stock_level": 1, "warehouse": "Dallas-TX", "restock_eta": "2025-06-03"},
+    "PS11741028": {"stock_level": 2, "warehouse": "Seattle-WA", "restock_eta": "2025-06-15"},
+    "PS11745889": {"stock_level": 3, "warehouse": "Detroit-MI", "restock_eta": "2025-06-07"},
+    "PS11760447": {"stock_level": 4, "warehouse": "Chicago-IL", "restock_eta": "2025-06-12"},
+    "PS11762954": {"stock_level": 4, "warehouse": "Phoenix-AZ", "restock_eta": "2025-06-09"},
+    "PS11773062": {"stock_level": 2, "warehouse": "Chicago-IL", "restock_eta": "2025-06-20"},
+    # In-stock items
+    "PS11731365": {"stock_level": 14, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11756155": {"stock_level": 22, "warehouse": "Atlanta-GA", "restock_eta": None},
+    "PS11749893": {"stock_level": 7, "warehouse": "Detroit-MI", "restock_eta": None},
+    "PS11723145": {"stock_level": 11, "warehouse": "Dallas-TX", "restock_eta": None},
+    "PS11755497": {"stock_level": 30, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11748933": {"stock_level": 8, "warehouse": "Atlanta-GA", "restock_eta": None},
+    "PS11769617": {"stock_level": 5, "warehouse": "Detroit-MI", "restock_eta": None},
+    "PS11759594": {"stock_level": 6, "warehouse": "Seattle-WA", "restock_eta": None},
+    "PS11771203": {"stock_level": 19, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11742516": {"stock_level": 9, "warehouse": "Dallas-TX", "restock_eta": None},
+    "PS11765042": {"stock_level": 13, "warehouse": "Atlanta-GA", "restock_eta": None},
+    "PS11753478": {"stock_level": 16, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11764891": {"stock_level": 10, "warehouse": "Detroit-MI", "restock_eta": None},
+    "PS11738927": {"stock_level": 25, "warehouse": "Dallas-TX", "restock_eta": None},
+    "PS11752014": {"stock_level": 17, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11758485": {"stock_level": 6, "warehouse": "Atlanta-GA", "restock_eta": None},
+    "PS11769283": {"stock_level": 20, "warehouse": "Detroit-MI", "restock_eta": None},
+    "PS11771044": {"stock_level": 23, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11756892": {"stock_level": 11, "warehouse": "Dallas-TX", "restock_eta": None},
+    "PS11764103": {"stock_level": 15, "warehouse": "Atlanta-GA", "restock_eta": None},
+    "PS11743219": {"stock_level": 18, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11747561": {"stock_level": 14, "warehouse": "Detroit-MI", "restock_eta": None},
+    "PS11768334": {"stock_level": 9, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11762201": {"stock_level": 7, "warehouse": "Atlanta-GA", "restock_eta": None},
+    "PS11754873": {"stock_level": 28, "warehouse": "Dallas-TX", "restock_eta": None},
+    "PS11763948": {"stock_level": 40, "warehouse": "Chicago-IL", "restock_eta": None},
+    "PS11777241": {"stock_level": 21, "warehouse": "Detroit-MI", "restock_eta": None},
+}
