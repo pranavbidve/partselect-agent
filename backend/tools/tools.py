@@ -130,7 +130,7 @@ def get_live_inventory(part_number: str) -> str:
 
 
 PRODUCT_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number, get_live_inventory]
-COMPAT_TOOLS         = [lookup_part_by_number]
+COMPAT_TOOLS         = [lookup_part_by_number, get_parts_for_model]
 TROUBLE_TOOLS        = [search_partselect, retrieve_parts]
 ORDER_TOOLS          = [add_to_cart, get_cart, get_customer_history, search_partselect]
 RECOMMENDATION_TOOLS = [get_parts_for_model]

@@ -25,7 +25,6 @@ order_agent_llm = tool_llm.bind_tools(ORDER_TOOLS)
 recommend_agent_llm = tool_llm.bind_tools(RECOMMENDATION_TOOLS)
 
 
-
 def supervisor_node(state: AgentState) -> dict:
     system = """You are a routing assistant for PartSelect.com, a retailer of refrigerator and dishwasher parts.
 Classify the user's latest message into one of these intents:
@@ -50,17 +49,30 @@ and get installation instructions. Always include the part number, price, and st
 
 
 def compat_agent(state: AgentState) -> dict:
-    system = """You are a compatibility checker. Use your tools to look up the part, then output EXACTLY the following format and nothing else:
+    system = """You are a compatibility checker. Use your tools to look up the part, then respond as follows:
 
-[Yes/No] — [part_number] is [compatible/not compatible] with [model_number].
+If COMPATIBLE, output EXACTLY:
+Yes — [part_number] is compatible with [model_number].
 
 **Part name:** [part_name]
 
-**Appliance type:** [appliance_type] \n
+**Appliance type:** [appliance_type]
+
+If NOT COMPATIBLE, output EXACTLY:
+No — [part_number] is not compatible with [model_number].
+
+**Part name:** [part_name]
+
+**Appliance type:** [appliance_type]
+
+Then call get_parts_for_model with the model number. List every returned part as:
+- [part_number]: [name]
+
+Prefix that list with: "Here are parts that are compatible with [model_number]:"
 
 Rules:
-- Output only those 3 lines. No extra sentences, no lists, no explanations.
-- Base every field strictly on the tool result. Do not add information not present in the tool result."""
+- Base every field strictly on tool results. Do not add information not present in the tool results.
+- No extra sentences beyond the formats above."""
     response = compat_agent_llm.invoke([SystemMessage(content=system)] + state["messages"])
     response.name = "compat_agent"
     return {"messages": [response]}
@@ -75,8 +87,34 @@ refrigerators and dishwashers and recommend the parts needed to fix them. Always
 
 
 def order_agent(state: AgentState) -> dict:
-    system = """You are an order management specialist for PartSelect.com. Help users with their cart,
-order status, returns, and order history. Use get_customer_history when the user asks about their account."""
+    from backend.data.mock_data import MOCK_CUSTOMERS
+    customer_id = state.get("customer_id") or "CUST-001"
+    # resolve by name if user mentions one in the latest message
+    last_human = next(
+        (m.content for m in reversed(state["messages"]) if m.__class__.__name__ == "HumanMessage"), ""
+    )
+    for cid, cdata in MOCK_CUSTOMERS.items():
+        first_name = cdata["name"].split()[0].lower()
+        if first_name in last_human.lower():
+            customer_id = cid
+            break
+    system = f"""You are an order management specialist for PartSelect.com. Help users with their cart, order status, returns, and order history.
+The current customer's ID is {customer_id}. When the user asks about their order history or account, call get_customer_history with customer_id="{customer_id}" immediately — do not ask the user for their ID.
+
+When presenting order history, use this exact format:
+
+**Order History for [name]**
+
+| Order ID | Part Number | Part Name | Date | Status |
+|----------|-------------|-----------|------|--------|
+| [order_id] | [part] | [part_name] | [date] | [status] |
+
+If there are open tickets, follow with:
+
+**Open Tickets**
+- [ticket description]
+
+No extra commentary beyond the tables above."""
     response = order_agent_llm.invoke([SystemMessage(content=system)] + state["messages"])
     response.name = "order_agent"
     return {"messages": [response]}
@@ -95,7 +133,7 @@ def recommendation_agent(state: AgentState) -> dict:
 
 ⚠️ Low Stock Alert for Model [model_number]
 
-The part you asked about is compatible — and it's running low! Here's what's at risk of selling out:
+The part you asked about is compatible and it's running low! Here's what's at risk of selling out:
 
 | Part Number | Name | Price | Stock Level |
 |-------------|------|-------|-------------|
