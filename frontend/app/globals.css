@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --brand: #0066CC;
+  --brand-dark: #0052a3;
+}
+
+body {
+  font-family: Inter, system-ui, sans-serif;
+  background: #f5f7fa;
+  color: #171717;
+}

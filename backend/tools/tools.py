@@ -60,6 +60,23 @@ def lookup_part_by_number(part_number: str) -> str:
 
 
 @tool
+def get_parts_for_model(model_number: str) -> str:
+    """Get all parts compatible with a specific appliance model number (e.g. WDT780SAEM1)."""
+    all_results = collection.get(include=["documents", "metadatas"])
+    parts = []
+    for doc, meta in zip(all_results["documents"], all_results["metadatas"]):
+        compatible = json.loads(meta.get("compatible_models", "[]"))
+        if model_number in compatible:
+            inv = MOCK_INVENTORY.get(meta.get("part_number", ""), {})
+            meta["stock_level"] = inv.get("stock_level", meta.get("stock_level", 0))
+            meta["low_stock"] = meta["stock_level"] < LOW_STOCK_THRESHOLD
+            parts.append({"metadata": meta, "description": doc})
+    if not parts:
+        return f"No parts found for model {model_number}."
+    return json.dumps(parts, indent=2)
+
+
+@tool
 def add_to_cart(part_number: str, session_id: str = "default") -> str:
     """Add a part to the cart by part number."""
     results = collection.get(where={"part_number": part_number}, include=["metadatas"])
@@ -113,8 +130,8 @@ def get_live_inventory(part_number: str) -> str:
 
 
 PRODUCT_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number, get_live_inventory]
-COMPAT_TOOLS         = [search_partselect, retrieve_parts, lookup_part_by_number, get_live_inventory]
+COMPAT_TOOLS         = [lookup_part_by_number]
 TROUBLE_TOOLS        = [search_partselect, retrieve_parts]
 ORDER_TOOLS          = [add_to_cart, get_cart, get_customer_history, search_partselect]
-RECOMMENDATION_TOOLS = [retrieve_parts, lookup_part_by_number]
-ALL_TOOLS = [search_partselect, retrieve_parts, lookup_part_by_number, add_to_cart, get_cart, get_customer_history, get_live_inventory]
+RECOMMENDATION_TOOLS = [get_parts_for_model]
+ALL_TOOLS = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model, add_to_cart, get_cart, get_customer_history, get_live_inventory]

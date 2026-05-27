@@ -1,4 +1,6 @@
 from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
@@ -13,13 +15,14 @@ supervisor_llm = ChatGroq(model=SUPERVISOR_MODEL, temperature=0)
 supervisor_llm_structured = supervisor_llm.with_structured_output(SupervisorDecision)
 
 agent_llm = ChatGroq(model=GROQ_MODEL, temperature=0) 
-# special_llm = ChatOpenAI(model = 'gpt-5.4-mini')
+tool_llm = ChatOpenAI(model = 'gpt-5.4-mini')
+reason_llm = ChatAnthropic(model = 'claude-sonnet-4-6', temperature=0)
 
-product_agent_llm = agent_llm.bind_tools(PRODUCT_TOOLS)
-compat_agent_llm = agent_llm.bind_tools(COMPAT_TOOLS)
-trouble_agent_llm = agent_llm.bind_tools(TROUBLE_TOOLS)
-order_agent_llm = agent_llm.bind_tools(ORDER_TOOLS)
-recommend_agent_llm = agent_llm.bind_tools(RECOMMENDATION_TOOLS)
+product_agent_llm = tool_llm.bind_tools(PRODUCT_TOOLS)
+compat_agent_llm = tool_llm.bind_tools(COMPAT_TOOLS)
+trouble_agent_llm = reason_llm.bind_tools(TROUBLE_TOOLS)
+order_agent_llm = tool_llm.bind_tools(ORDER_TOOLS)
+recommend_agent_llm = tool_llm.bind_tools(RECOMMENDATION_TOOLS)
 
 
 
@@ -30,7 +33,7 @@ Classify the user's latest message into one of these intents:
 - compatibility: whether a part fits a specific appliance model
 - troubleshoot: diagnosing a symptom or problem with an appliance
 - order: cart, order status, returns, shipping, account or order history
-- guard: anything unrelated to refrigerator or dishwasher parts"""
+- guard: anything unrelated to refrigerator or dishwasher parts, or empty/unclear messages with no actionable content"""
     decision = supervisor_llm_structured.invoke(
         [SystemMessage(content=system)] + state["messages"]
     )
@@ -47,8 +50,17 @@ and get installation instructions. Always include the part number, price, and st
 
 
 def compat_agent(state: AgentState) -> dict:
-    system = """You are a compatibility specialist for PartSelect.com. Help users determine if a part fits
-their specific appliance model. Always confirm both the model number and part number in your response."""
+    system = """You are a compatibility checker. Use your tools to look up the part, then output EXACTLY the following format and nothing else:
+
+[Yes/No] — [part_number] is [compatible/not compatible] with [model_number].
+
+**Part name:** [part_name]
+
+**Appliance type:** [appliance_type] \n
+
+Rules:
+- Output only those 3 lines. No extra sentences, no lists, no explanations.
+- Base every field strictly on the tool result. Do not add information not present in the tool result."""
     response = compat_agent_llm.invoke([SystemMessage(content=system)] + state["messages"])
     response.name = "compat_agent"
     return {"messages": [response]}
@@ -72,10 +84,35 @@ order status, returns, and order history. Use get_customer_history when the user
 
 def recommendation_agent(state: AgentState) -> dict:
     low_stock = state.get("low_stock_parts") or []
-    system = f"""You are a proactive product advisor for PartSelect.com.
-The following parts are low in stock: {low_stock}.
-For each, find in-stock alternatives using your tools and present them clearly with part numbers and availability."""
-    response = recommend_agent_llm.invoke([SystemMessage(content=system)] + state["messages"])
+    system = f"""You are a low stock alert agent. The following parts are low in stock: {low_stock}.
+
+1. Identify the appliance model number the user mentioned in the conversation.
+2. Call get_parts_for_model with that model number to retrieve all compatible parts.
+3. From those results, find only the parts where low_stock is true.
+4. Output EXACTLY the following format and nothing else:
+
+
+
+⚠️ Low Stock Alert for Model [model_number]
+
+The part you asked about is compatible — and it's running low! Here's what's at risk of selling out:
+
+| Part Number | Name | Price | Stock Level |
+|-------------|------|-------|-------------|
+| [part_number] | [name] | $[price] | Only [stock_level] left |
+
+We recommend ordering soon to avoid delays!
+
+Rules:
+- If the part is not in low stock thenjust skil the low stock alert and return nothing.
+- Output only the text above. No preamble, no extra commentary, no restatement of compatibility.
+- Add one table row per low-stock part.
+- Do not include any part not returned by get_parts_for_model.
+"""
+    msgs = state["messages"]
+    while msgs and isinstance(msgs[-1], AIMessage):
+        msgs = msgs[:-1]
+    response = recommend_agent_llm.invoke([SystemMessage(content=system)] + msgs)
     response.name = "recommendation_agent"
     return {"messages": [response]}
 
@@ -94,7 +131,19 @@ def route_by_intent(state: AgentState) -> str:
 
 
 def check_stock(state: AgentState) -> str:
-    parts = state.get("retrieved_parts") or []
+    import json as _json
+    from langchain_core.messages import ToolMessage as _ToolMessage
+    parts = []
+    for msg in state.get("messages", []):
+        if isinstance(msg, _ToolMessage) and msg.name in ("retrieve_parts", "lookup_part_by_number"):
+            try:
+                parsed = _json.loads(msg.content)
+                if isinstance(parsed, list):
+                    parts.extend(parsed)
+                elif isinstance(parsed, dict):
+                    parts.append(parsed)
+            except (ValueError, TypeError):
+                pass
     low_stock = [
         p["metadata"]["part_number"]
         for p in parts
@@ -158,5 +207,6 @@ builder.add_conditional_edges("tools", route_after_tools, {
 
 builder.add_edge("guard_node", END)
 builder.add_edge("recommendation_agent", END)
+
 
 graph = builder.compile()
