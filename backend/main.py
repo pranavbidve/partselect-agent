@@ -1,4 +1,6 @@
+import asyncio
 import json
+import re
 from typing import Optional
 
 from fastapi import FastAPI
@@ -41,32 +43,34 @@ async def chat(request: ChatRequest):
 
     async def generate():
         final_state = None
+        try:
+            async for stream_type, data in graph.astream(
+                {"messages": history, "customer_id": request.customer_id, "session_id": request.session_id},
+                stream_mode=["messages", "values"],
+            ):
+                if stream_type == "messages":
+                    chunk, meta = data
+                    if not isinstance(chunk, AIMessage):
+                        continue
+                    if meta.get("langgraph_node") == "supervisor":
+                        continue
+                    if getattr(chunk, "tool_calls", None):
+                        continue
+                    content = chunk.content
+                    if not content:
+                        continue
+                    if isinstance(content, list):
+                        text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
+                    else:
+                        text = content
+                    if text:
+                        node = meta.get("langgraph_node", "")
+                        yield {"data": json.dumps({"type": "token", "content": text, "node": node})}
+                elif stream_type == "values":
+                    final_state = data
+        except asyncio.CancelledError:
+            return
 
-        async for stream_type, data in graph.astream(
-            {"messages": history, "customer_id": request.customer_id, "session_id": request.session_id},
-            stream_mode=["messages", "values"],
-        ):
-            if stream_type == "messages":
-                chunk, meta = data
-                # Only stream AIMessage text — skip ToolMessages and tool call chunks
-                if not isinstance(chunk, AIMessage):
-                    continue
-                if getattr(chunk, "tool_calls", None):
-                    continue
-                content = chunk.content
-                if not content:
-                    continue
-                if isinstance(content, list):
-                    text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
-                else:
-                    text = content
-                if text:
-                    node = meta.get("langgraph_node", "")
-                    yield {"data": json.dumps({"type": "token", "content": text, "node": node})}
-            elif stream_type == "values":
-                final_state = data
-
-        # Only extract parts from tool calls made THIS turn (not from history)
         retrieved_parts = []
         model_parts = []
         if final_state:
@@ -85,8 +89,22 @@ async def chat(request: ChatRequest):
                 elif msg.name in ("retrieve_parts", "lookup_part_by_number"):
                     retrieved_parts.extend(parts_list)
 
-        # If get_parts_for_model ran, use those results only (ignore lookup results)
         retrieved_parts = model_parts if model_parts else retrieved_parts
+
+        seen = set()
+        retrieved_parts = [p for p in retrieved_parts if not (pn := p.get("metadata", {}).get("part_number")) or (pn not in seen and not seen.add(pn))]
+
+        if not model_parts and retrieved_parts:
+            mentioned = set()
+            for msg in new_messages:
+                if isinstance(msg, AIMessage) and not getattr(msg, "tool_calls", None):
+                    content = msg.content
+                    text = "".join(b.get("text", "") for b in content if b.get("type") == "text") if isinstance(content, list) else (content or "")
+                    mentioned.update(re.findall(r'PS\d+', text))
+            if mentioned:
+                filtered = [p for p in retrieved_parts if p.get("metadata", {}).get("part_number") in mentioned]
+                if filtered:
+                    retrieved_parts = filtered
 
         yield {
             "data": json.dumps({"type": "done", "parts": retrieved_parts}),

@@ -11,9 +11,7 @@ LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "instalily-case-study")
 
 LOW_STOCK_THRESHOLD = 5
 
-# i used a cheaper llm for routing - less cost :) 
-SUPERVISOR_MODEL = "llama-3.1-8b-instant"
+SUPERVISOR_MODEL = "gpt-5.5-2026-04-23"
 
-GROQ_MODEL = "llama-3.1-8b-instant"
-
-
+AGENT_MODEL = 'gpt-5.4-mini'
+REASON_MODEL = 'claude-sonnet-4-6'
