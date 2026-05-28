@@ -1,11 +1,12 @@
 import json
+from datetime import date, timedelta
 from langchain_core.tools import tool
 from tavily import TavilyClient
 import chromadb
 from chromadb.utils import embedding_functions
 
 from backend.config import TAVILY_API_KEY, LOW_STOCK_THRESHOLD
-from backend.data.mock_data import MOCK_CUSTOMERS, MOCK_INVENTORY
+from backend.data.mock_data import MOCK_TECHNICIANS, MOCK_INVENTORY, WAREHOUSE_SHIPPING_DAYS
 
 tavily = TavilyClient(api_key=TAVILY_API_KEY)
 
@@ -104,34 +105,47 @@ def get_cart(session_id: str = "default") -> str:
 
 
 @tool
-def get_customer_history(customer_id: str) -> str:
-    """Get order history and account info for a customer. (CRM connector)"""
-    customer = MOCK_CUSTOMERS.get(customer_id)
-    if not customer:
-        return f"Customer {customer_id} not found."
-    return json.dumps(customer, indent=2)
+def get_estimated_delivery(part_number: str) -> str:
+    """Get estimated delivery date for a part based on stock level and warehouse location."""
+    inv = MOCK_INVENTORY.get(part_number)
+    if not inv:
+        return f"No inventory info found for {part_number}."
+
+    stock = inv.get("stock_level", 0)
+    warehouse = inv.get("warehouse", "Chicago-IL")
+    shipping_days = WAREHOUSE_SHIPPING_DAYS.get(warehouse, 5)
+
+    if stock >= LOW_STOCK_THRESHOLD:
+        delivery = date.today() + timedelta(days=shipping_days)
+        return (
+            f"In stock at {warehouse}. Estimated delivery: "
+            f"{delivery.strftime('%b %d, %Y')} ({shipping_days} business days)."
+        )
+    elif inv.get("restock_eta"):
+        restock = date.fromisoformat(inv["restock_eta"])
+        delivery = restock + timedelta(days=shipping_days)
+        return (
+            f"Low stock at {warehouse}. Restocks {restock.strftime('%b %d')} — "
+            f"estimated delivery: {delivery.strftime('%b %d, %Y')}."
+        )
+    else:
+        return f"Part {part_number} is currently out of stock with no restock ETA."
 
 
 @tool
-def get_live_inventory(part_number: str) -> str:
-    """Get live stock level and warehouse for a part. (ERP connector)"""
-    inv = MOCK_INVENTORY.get(part_number)
-    if not inv:
-        return f"No inventory data for {part_number}."
-    result = {
-        "part_number": part_number,
-        "stock_level": inv["stock_level"],
-        "warehouse": inv["warehouse"],
-        "low_stock": inv["stock_level"] < LOW_STOCK_THRESHOLD,
-    }
-    if inv.get("restock_eta"):
-        result["restock_eta"] = inv["restock_eta"]
-    return json.dumps(result, indent=2)
+def get_emp_history(customer_id: str) -> str:
+    """Get order history and account info for a technician by CUST-ID or EMP-ID. (CRM connector)"""
+    customer = MOCK_TECHNICIANS.get(customer_id)
+    if not customer:
+        # fallback: resolve by emp_id
+        customer = next((v for v in MOCK_TECHNICIANS.values() if v.get("emp_id") == customer_id), None)
+    if not customer:
+        return f"Technician {customer_id} not found."
+    return json.dumps(customer, indent=2)
 
 
-PRODUCT_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number, get_live_inventory, get_parts_for_model]
+PRODUCT_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model]
 COMPAT_TOOLS         = [lookup_part_by_number, get_parts_for_model]
 TROUBLE_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number]
-ORDER_TOOLS          = [add_to_cart, get_cart, get_customer_history, search_partselect]
-RECOMMENDATION_TOOLS = [get_parts_for_model]
-ALL_TOOLS = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model, add_to_cart, get_cart, get_customer_history, get_live_inventory]
+ORDER_TOOLS          = [add_to_cart, get_cart, get_emp_history, lookup_part_by_number, get_estimated_delivery]
+ALL_TOOLS = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model, add_to_cart, get_cart, get_emp_history, get_estimated_delivery]

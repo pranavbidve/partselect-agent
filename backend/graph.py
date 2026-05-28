@@ -8,22 +8,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from backend.config import SUPERVISOR_MODEL, LOW_STOCK_THRESHOLD
-
-
-def agent_messages(messages: list) -> list:
-    """Strip tool-call intermediates from prior turns only.
-    Preserves the current turn's tool calls so the agent's own loop works correctly."""
-    last_human = next((i for i in range(len(messages) - 1, -1, -1) if isinstance(messages[i], HumanMessage)), None)
-    if last_human is None:
-        return messages
-    prior = [
-        m for m in messages[:last_human]
-        if isinstance(m, (HumanMessage, AIMessage)) and not getattr(m, "tool_calls", None)
-    ]
-    return prior + messages[last_human:]
-
 from backend.state import AgentState, SupervisorDecision
-from backend.tools.tools import PRODUCT_TOOLS, COMPAT_TOOLS, TROUBLE_TOOLS, ORDER_TOOLS, RECOMMENDATION_TOOLS, ALL_TOOLS
+from backend.tools.tools import PRODUCT_TOOLS, COMPAT_TOOLS, TROUBLE_TOOLS, ORDER_TOOLS, ALL_TOOLS
 from backend.prompts import (
     SUPERVISOR_PROMPT,
     PRODUCT_AGENT_PROMPT,
@@ -38,16 +24,28 @@ from backend.prompts import (
 
 # i kept temperature 0 coz need a deterministic decision to route
 supervisor_llm = ChatOpenAI(model=SUPERVISOR_MODEL, temperature=0)
-supervisor_llm_structured = supervisor_llm.with_structured_output(SupervisorDecision)
-
 tool_llm = ChatOpenAI(model=AGENT_MODEL)
 reason_llm = ChatAnthropic(model=REASON_MODEL, temperature=0)
 
+supervisor_llm_structured = supervisor_llm.with_structured_output(SupervisorDecision)
 product_agent_llm = tool_llm.bind_tools(PRODUCT_TOOLS)
 compat_agent_llm = tool_llm.bind_tools(COMPAT_TOOLS)
 order_agent_llm = tool_llm.bind_tools(ORDER_TOOLS)
-recommend_agent_llm = tool_llm.bind_tools(RECOMMENDATION_TOOLS)
+recommend_agent_llm = tool_llm
 trouble_agent_llm = reason_llm.bind_tools(TROUBLE_TOOLS)
+
+
+def agent_messages(messages: list) -> list:
+    """Strip tool-call intermediates from prior turns only.
+    Preserves the current turn's tool calls so the agent's own loop works correctly."""
+    last_human = next((i for i in range(len(messages) - 1, -1, -1) if isinstance(messages[i], HumanMessage)), None)
+    if last_human is None:
+        return messages
+    prior = [
+        m for m in messages[:last_human]
+        if isinstance(m, (HumanMessage, AIMessage)) and not getattr(m, "tool_calls", None)
+    ]
+    return prior + messages[last_human:]
 
 
 def supervisor_node(state: AgentState) -> dict:
@@ -77,19 +75,35 @@ def trouble_agent(state: AgentState) -> dict:
 
 
 def order_auth(state: AgentState) -> dict:
-    from backend.data.mock_data import MOCK_CUSTOMERS
+    import re
+    from backend.data.mock_data import MOCK_TECHNICIANS
+
+    # Direct ID lookup — accept CUST-ID or EMP-ID
+    for msg in reversed(state["messages"]):
+        if isinstance(msg, HumanMessage):
+            cust_match = re.search(r'CUST-\d+', msg.content, re.IGNORECASE)
+            emp_match = re.search(r'EMP-\d+', msg.content, re.IGNORECASE)
+            if cust_match:
+                cid = cust_match.group().upper()
+                if cid in MOCK_TECHNICIANS:
+                    return {"customer_id": cid, "order_verified": True, "order_asked_name": True}
+            if emp_match:
+                eid = emp_match.group().upper()
+                matched = next((k for k, v in MOCK_TECHNICIANS.items() if v.get("emp_id") == eid), None)
+                if matched:
+                    return {"customer_id": matched, "order_verified": True, "order_asked_name": True}
+
+    # No customer ID provided — ask for name once
     if not state.get("order_asked_name"):
-        response = AIMessage(
-            content=ORDER_AUTH_ASK_NAME,
-            name="order_auth",
-        )
+        response = AIMessage(content=ORDER_AUTH_ASK_NAME, name="order_auth")
         return {"messages": [response], "order_asked_name": True}
 
+    # Name was asked — try to match against customer names
     last_human = next(
         (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)), ""
     )
     customer_id = None
-    for cid, cdata in MOCK_CUSTOMERS.items():
+    for cid, cdata in MOCK_TECHNICIANS.items():
         if any(part in last_human.lower() for part in cdata["name"].lower().split()):
             customer_id = cid
             break
@@ -97,21 +111,18 @@ def order_auth(state: AgentState) -> dict:
     if customer_id:
         return {"customer_id": customer_id, "order_verified": True}
 
-    response = AIMessage(
-        content=ORDER_AUTH_NOT_FOUND,
-        name="order_auth",
-    )
+    response = AIMessage(content=ORDER_AUTH_NOT_FOUND, name="order_auth")
     return {"messages": [response]}
 
 
 def order_agent(state: AgentState) -> dict:
-    from backend.data.mock_data import MOCK_CUSTOMERS
+    from backend.data.mock_data import MOCK_TECHNICIANS
     customer_id = state.get("customer_id") or "CUST-001"
     # resolve by name if user mentions one in the latest message
     last_human = next(
         (m.content for m in reversed(state["messages"]) if m.__class__.__name__ == "HumanMessage"), ""
     )
-    for cid, cdata in MOCK_CUSTOMERS.items():
+    for cid, cdata in MOCK_TECHNICIANS.items():
         first_name = cdata["name"].split()[0].lower()
         if first_name in last_human.lower():
             customer_id = cid
@@ -224,7 +235,7 @@ builder.add_conditional_edges("product_agent", route_product_or_compat, {
 builder.add_conditional_edges("compat_agent", route_product_or_compat, {
     "tools": "tools", "low_stock": "recommendation_agent", "no_restock": END
 })
-for agent in ["trouble_agent", "order_agent", "recommendation_agent"]:
+for agent in ["trouble_agent", "order_agent"]:
     builder.add_conditional_edges(agent, tools_condition)
 
 builder.add_conditional_edges("tools", route_after_tools, {

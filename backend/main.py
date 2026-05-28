@@ -44,6 +44,8 @@ async def chat(request: ChatRequest):
 
     async def generate():
         final_state = None
+        last_node = None
+        had_tool_call = False
         try:
             async for stream_type, data in graph.astream(
                 {
@@ -58,10 +60,14 @@ async def chat(request: ChatRequest):
                 if stream_type == "messages":
                     chunk, meta = data
                     if not isinstance(chunk, AIMessage):
+                        if meta.get("langgraph_node") == "tools":
+                            had_tool_call = True
                         continue
-                    if meta.get("langgraph_node") == "supervisor":
+                    node = meta.get("langgraph_node", "")
+                    if node == "supervisor":
                         continue
                     if getattr(chunk, "tool_calls", None):
+                        had_tool_call = True
                         continue
                     content = chunk.content
                     if not content:
@@ -71,7 +77,11 @@ async def chat(request: ChatRequest):
                     else:
                         text = content
                     if text:
-                        node = meta.get("langgraph_node", "")
+                        # Insert paragraph break when switching nodes or after tool calls in same node
+                        if last_node is not None and (had_tool_call or last_node != node):
+                            yield {"data": json.dumps({"type": "token", "content": "\n\n", "node": node})}
+                        had_tool_call = False
+                        last_node = node
                         yield {"data": json.dumps({"type": "token", "content": text, "node": node})}
                 elif stream_type == "values":
                     final_state = data

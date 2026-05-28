@@ -9,9 +9,12 @@ function ProductCard({ part, onAddToCart }) {
     <div className="product-card">
       <div className="product-icon">
         <img
-          src={`https://placehold.co/56x56/1b3875/ffffff?text=${encodeURIComponent(metadata.category)}&font=lato`}
-          alt={metadata.category}
+          src={metadata.image_url}
+          alt={metadata.name}
           className="product-img"
+          onError={(e) => {
+            e.target.src = `https://placehold.co/56x56/1b3875/ffffff?text=${encodeURIComponent(metadata.category)}&font=lato`;
+          }}
         />
       </div>
       <div className="product-info">
@@ -28,7 +31,9 @@ function ProductCard({ part, onAddToCart }) {
               Low Stock ({metadata.stock_level} left)
             </span>
           ) : (
-            <span className="stock-badge in-stock">In Stock</span>
+            <span className="stock-badge in-stock">
+              In Stock{metadata.stock_level != null ? ` (${metadata.stock_level})` : ""}
+            </span>
           )}
           <span className="product-brand">{metadata.brand}</span>
         </div>
