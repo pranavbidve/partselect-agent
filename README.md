@@ -18,7 +18,7 @@ PartSelect serves a wide range of customers — from DIY homeowners to professio
 
 ## Solution: Multi-Agent Orchestration with LangGraph
 
-Rather than a single monolithic LLM, the system uses a **supervisor-router + specialist agent** pattern built with LangGraph. Each agent has a narrow, well-defined responsibility. The supervisor classifies intent and routes to the right agent — ensuring focused, accurate responses.
+The system uses a **supervisor-router + specialist agent** pattern built with LangGraph. The supervisor classifies intent and routes to the right agent - ensuring focused, accurate responses.
 
 ### Agents
 
@@ -123,6 +123,3 @@ case-study-instalily/
 
 - **Visual part identification**: Allow users to upload a photo of a broken part — use a vision model to identify the part number automatically. This is especially useful for field technicians who have the part in hand but not the manual.
 - **LangGraph deep agent orchestrator**: Replace flat conditional routing with a true supervisor agent that maintains a scratchpad, reasons about which sub-agent to call next, and loops back for multi-step queries — mapping more closely to Instalily's InstaWorkers model.
-- **Bulk ordering**: Facilities managers ordering multiple units across several appliance models in a single session.
-- **ERP write-back**: Confirmed orders written back to the customer's procurement system (SAP/NetSuite) automatically.
-- **OEM → PartSelect cross-reference**: Map manufacturer part numbers from appliance manuals to PartSelect equivalents.
