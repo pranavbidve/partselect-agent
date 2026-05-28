@@ -14,4 +14,5 @@ LOW_STOCK_THRESHOLD = 5
 SUPERVISOR_MODEL = "gpt-5.5-2026-04-23"
 
 AGENT_MODEL = 'gpt-5.4-mini'
+
 REASON_MODEL = 'claude-sonnet-4-6'

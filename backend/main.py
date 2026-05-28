@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sessions: dict[str, list] = {}
+sessions: dict[str, dict] = {}
 
 
 class ChatRequest(BaseModel):
@@ -37,7 +37,8 @@ def health():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    history = sessions.get(request.session_id, [])
+    prev = sessions.get(request.session_id, {})
+    history = prev.get("messages", [])
     history_len = len(history)
     history = history + [HumanMessage(content=request.message)]
 
@@ -45,7 +46,13 @@ async def chat(request: ChatRequest):
         final_state = None
         try:
             async for stream_type, data in graph.astream(
-                {"messages": history, "customer_id": request.customer_id, "session_id": request.session_id},
+                {
+                    "messages": history,
+                    "customer_id": prev.get("customer_id") or request.customer_id,
+                    "session_id": request.session_id,
+                    "order_asked_name": prev.get("order_asked_name"),
+                    "order_verified": prev.get("order_verified"),
+                },
                 stream_mode=["messages", "values"],
             ):
                 if stream_type == "messages":
@@ -74,7 +81,12 @@ async def chat(request: ChatRequest):
         retrieved_parts = []
         model_parts = []
         if final_state:
-            sessions[request.session_id] = final_state["messages"][-20:]
+            sessions[request.session_id] = {
+                "messages": final_state["messages"][-20:],
+                "customer_id": final_state.get("customer_id"),
+                "order_asked_name": final_state.get("order_asked_name"),
+                "order_verified": final_state.get("order_verified"),
+            }
             new_messages = final_state["messages"][history_len:]
             for msg in new_messages:
                 if not isinstance(msg, ToolMessage):

@@ -16,3 +16,5 @@ class AgentState(TypedDict):
     is_off_topic: Optional[bool]
     customer_id: Optional[str]
     session_id: Optional[str]
+    order_asked_name: Optional[bool]
+    order_verified: Optional[bool]
