@@ -11,7 +11,8 @@ LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "instalily-case-study")
 
 LOW_STOCK_THRESHOLD = 5
 
-SUPERVISOR_MODEL = "gpt-5.5-2026-04-23"
+# for higher-quality outputs with fewer tokens and fewer retries
+SUPERVISOR_MODEL = 'gpt-5.5-2026-04-23'
 
 AGENT_MODEL = 'gpt-5.4-mini'
 
