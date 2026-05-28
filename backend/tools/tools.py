@@ -6,7 +6,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 from backend.config import TAVILY_API_KEY, LOW_STOCK_THRESHOLD
-from backend.data.mock_data import MOCK_TECHNICIANS, MOCK_INVENTORY, WAREHOUSE_SHIPPING_DAYS
+from backend.data.mock_data import MOCK_CUSTOMERS, MOCK_INVENTORY, WAREHOUSE_SHIPPING_DAYS
 
 tavily = TavilyClient(api_key=TAVILY_API_KEY)
 
@@ -133,19 +133,16 @@ def get_estimated_delivery(part_number: str) -> str:
 
 
 @tool
-def get_emp_history(customer_id: str) -> str:
-    """Get order history and account info for a technician by CUST-ID or EMP-ID. (CRM connector)"""
-    customer = MOCK_TECHNICIANS.get(customer_id)
+def get_customer_history(customer_id: str) -> str:
+    """Get order history and account info for a customer by CUST-ID. (CRM connector)"""
+    customer = MOCK_CUSTOMERS.get(customer_id)
     if not customer:
-        # fallback: resolve by emp_id
-        customer = next((v for v in MOCK_TECHNICIANS.values() if v.get("emp_id") == customer_id), None)
-    if not customer:
-        return f"Technician {customer_id} not found."
+        return f"Customer {customer_id} not found."
     return json.dumps(customer, indent=2)
 
 
 PRODUCT_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model]
 COMPAT_TOOLS         = [lookup_part_by_number, get_parts_for_model]
 TROUBLE_TOOLS        = [search_partselect, retrieve_parts, lookup_part_by_number]
-ORDER_TOOLS          = [add_to_cart, get_cart, get_emp_history, lookup_part_by_number, get_estimated_delivery]
-ALL_TOOLS = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model, add_to_cart, get_cart, get_emp_history, get_estimated_delivery]
+ORDER_TOOLS          = [add_to_cart, get_cart, get_customer_history, lookup_part_by_number, get_estimated_delivery]
+ALL_TOOLS = [search_partselect, retrieve_parts, lookup_part_by_number, get_parts_for_model, add_to_cart, get_cart, get_customer_history, get_estimated_delivery]

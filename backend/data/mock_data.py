@@ -1,10 +1,6 @@
-MOCK_TECHNICIANS = {
+MOCK_CUSTOMERS = {
     "CUST-001": {
         "name": "John Smith",
-        "emp_id": "EMP-1001",
-        "job_title": "Senior Field Technician",
-        "department": "Appliance Services",
-        "company": "Apex Property Services",
         "account_tier": "standard",
         "order_history": [
             {"order_id": "ORD-4821", "part": "PS11752389", "part_name": "Refrigerator Ice Maker Replacement", "date": "2024-11-10", "status": "delivered"},
@@ -12,38 +8,30 @@ MOCK_TECHNICIANS = {
             {"order_id": "ORD-5102", "part": "PS16218782", "part_name": "Refrigerator Water Filter", "date": "2025-01-15", "status": "delivered"},
         ],
         "open_tickets": [
-            {"ticket_id": "TKT-2201", "issue": "Dishwasher drain issue — awaiting part delivery", "unit": "Unit 4B", "status": "in progress"},
+            {"ticket_id": "TKT-2201", "issue": "Dishwasher drain issue — awaiting part delivery", "status": "in progress"},
         ],
-        "email": "j.smith@apexpropertyservices.com",
+        "email": "j.smith@email.com",
     },
     "CUST-002": {
         "name": "Maria Garcia",
-        "emp_id": "EMP-1002",
-        "job_title": "Lead Service Technician",
-        "department": "Appliance Services",
-        "company": "Apex Property Services",
-        "account_tier": "senior",
+        "account_tier": "premium",
         "order_history": [
             {"order_id": "ORD-5501", "part": "PS11755472", "part_name": "Dishwasher Pump and Motor Assembly", "date": "2025-02-03", "status": "delivered"},
             {"order_id": "ORD-5489", "part": "PS11745603", "part_name": "Dishwasher Water Inlet Valve", "date": "2025-01-28", "status": "delivered"},
         ],
         "open_tickets": [],
-        "email": "m.garcia@apexpropertyservices.com",
+        "email": "m.garcia@email.com",
     },
     "CUST-003": {
         "name": "Bob Johnson",
-        "emp_id": "EMP-1003",
-        "job_title": "Field Technician",
-        "department": "Appliance Services",
-        "company": "Apex Property Services",
         "account_tier": "standard",
         "order_history": [
             {"order_id": "ORD-4677", "part": "PS11737119", "part_name": "Evaporator Fan Motor", "date": "2024-09-14", "status": "delivered"},
         ],
         "open_tickets": [
-            {"ticket_id": "TKT-2198", "issue": "Refrigerator not cooling — technician scheduled", "unit": "Unit 7A", "status": "open"},
+            {"ticket_id": "TKT-2198", "issue": "Refrigerator not cooling — service visit scheduled", "status": "open"},
         ],
-        "email": "b.johnson@apexpropertyservices.com",
+        "email": "b.johnson@email.com",
     },
 }
 

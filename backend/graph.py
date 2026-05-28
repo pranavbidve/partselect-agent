@@ -21,7 +21,7 @@ from backend.prompts import (
 )
 import re
 import json as json
-from backend.data.mock_data import MOCK_TECHNICIANS
+from backend.data.mock_data import MOCK_CUSTOMERS
 
 # i kept temperature 0 coz need a deterministic decision to route
 supervisor_llm = ChatOpenAI(model=SUPERVISOR_MODEL, temperature=0)
@@ -72,38 +72,26 @@ def trouble_agent(state: AgentState) -> dict:
     return {"messages": [response]}
 
 def order_auth(state: AgentState) -> dict:
-    # Direct ID lookup — accept CUST-ID or EMP-ID
+    # Direct CUST-ID lookup
     for msg in reversed(state["messages"]):
         if isinstance(msg, HumanMessage):
             cust_match = re.search(r'CUST-\d+', msg.content, re.IGNORECASE)
-            emp_match = re.search(r'EMP-\d+', msg.content, re.IGNORECASE)
             if cust_match:
                 cid = cust_match.group().upper()
-                if cid in MOCK_TECHNICIANS:
+                if cid in MOCK_CUSTOMERS:
                     return {"customer_id": cid, "order_verified": True, "order_asked_name": True}
-            if emp_match:
-                eid = emp_match.group().upper()
-                matched = next((k for k, v in MOCK_TECHNICIANS.items() if v.get("emp_id") == eid), None)
-                if matched:
-                    return {"customer_id": matched, "order_verified": True, "order_asked_name": True}
 
-    # No ID provided — ask for employee ID once
+    # No ID provided — ask for customer ID once
     if not state.get("order_asked_name"):
         response = AIMessage(content=ORDER_AUTH_ASK_NAME, name="order_auth")
         return {"messages": [response], "order_asked_name": True}
 
-    # Try to match EMP-ID or name in the reply
+    # Try to match name in the reply
     last_human = next(
         (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)), ""
     )
-    emp_match = re.search(r'EMP-\d+', last_human, re.IGNORECASE)
-    if emp_match:
-        eid = emp_match.group().upper()
-        matched = next((k for k, v in MOCK_TECHNICIANS.items() if v.get("emp_id") == eid), None)
-        if matched:
-            return {"customer_id": matched, "order_verified": True}
 
-    for cid, cdata in MOCK_TECHNICIANS.items():
+    for cid, cdata in MOCK_CUSTOMERS.items():
         if any(part in last_human.lower() for part in cdata["name"].lower().split()):
             return {"customer_id": cid, "order_verified": True}
 
