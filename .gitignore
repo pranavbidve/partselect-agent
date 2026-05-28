@@ -24,3 +24,9 @@ code/
 final.md
 speech.md
 stress_test.py
+test_graph.py
+loom.txt
+scripts/
+
+# Generated vector database
+chroma_db/
