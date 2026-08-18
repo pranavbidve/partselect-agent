@@ -80,7 +80,7 @@ FastAPI server with a LangGraph multi-agent graph as the core.
 ## Project Structure
 
 ```
-case-study-partselect/
+partselect-agent/
 ├── backend/
 │   ├── agents/              # (reserved for future agent expansion)
 │   ├── data/
