@@ -1,5 +1,5 @@
 [project]
-name = "case-study-partselect"
+name = "partselect-agent"
 version = "0.1.0"
 description = "A multi-agent commerce assistant for PartSelect"
 readme = "README.md"
