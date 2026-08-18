@@ -1,5 +1,5 @@
 def main():
-    print("Hello from case-study-instalily!")
+    print("Hello from partselect-agent!")
 
 
 if __name__ == "__main__":
