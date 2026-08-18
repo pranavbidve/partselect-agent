@@ -1,7 +1,7 @@
 [project]
-name = "case-study-instalily"
+name = "case-study-partselect"
 version = "0.1.0"
-description = "Add your description here"
+description = "A multi-agent commerce assistant for PartSelect"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
