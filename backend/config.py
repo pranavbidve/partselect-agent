@@ -7,7 +7,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
-LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "instalily-case-study")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "partselect-agent")
 
 LOW_STOCK_THRESHOLD = 5
 
